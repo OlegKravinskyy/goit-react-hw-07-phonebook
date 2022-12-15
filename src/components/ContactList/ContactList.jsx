@@ -1,51 +1,41 @@
 import PropTypes from 'prop-types';
 import css from '../ContactList/ContactList.module.css';
-import { useSelector, useDispatch } from 'react-redux';
-import { getFilter, getItem } from '../../redux/contactSlice';
-import { deleteContacts } from '../../redux/contactSlice';
+import { useSelector } from 'react-redux';
 
-export const ContactList = () => {
-  const dispatch = useDispatch();
-  const contacts = useSelector(getItem);
-  const filter = useSelector(getFilter);
+export const ContactList = ({ handleDelete }) => {
+  const contacts = useSelector(state => state.contacts.items);
+  const filter = useSelector(state => state.filter);
 
-  const contactFilter = () => {
-    if (filter === '') {
-      return false;
-    }
-    return contacts.filter(contact =>
-      contact.name.toLowerCase().includes(filter)
-    );
-  };
-
-  const phoneList = contactFilter() ? contactFilter() : contacts;
-
+  if (contacts.length === 0) return;
   return (
-    <ul className={css.contactList}>
-      {phoneList.map(contact => (
-        <li key={contact.id}>
-          {contact.name}: {contact.number}
-          <button
-            type="button"
-            name={contact.id}
-            onClick={event => dispatch(deleteContacts(event.target.name))}
-            className={css.btn}
-          >
-            Delete
-          </button>
-        </li>
-      ))}
-    </ul>
+    <>
+      {filter ? (
+        false
+      ) : (
+        <ul className={css.list}>
+          {contacts.map(el => (
+            <li className={css.item} key={el.id}>
+              <p>
+                {el.name}: {el.phone}
+              </p>
+              <button
+                onClick={e => handleDelete(e)}
+                className={css.btn}
+                data-id={el.id}
+              >
+                {' '}
+                Delete{' '}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 };
 
 ContactList.propTypes = {
-  phoneList: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      number: PropTypes.string.isRequired,
-    })
-  ),
-  deleteContact: PropTypes.func.isRequired,
+  contacts: PropTypes.array,
+  filter: PropTypes.string,
+  handleDelete: PropTypes.func,
 };

@@ -1,0 +1,301 @@
+// import { persistReducer } from 'redux-persist';
+// import storage from 'redux-persist/lib/storage';
+
+// const contactsList = [
+//   { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
+//   { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
+//   { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
+//   { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
+// ];
+
+export const fetchContacts = createAsyncThunk(
+  'contacts/fetchContacts',
+  async function (_, { rejectWithValue }) {
+    try {
+      const response = await axios.get(
+        'https://639a3ee6e916a46ec0ad76f2.mockapi.io/contacts'
+      );
+      const contacts = await response.data;
+      return contacts;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const deleteContact = createAsyncThunk(
+  'contacts/deleteContact',
+  async function (id, { rejectWithValue, dispatch }) {
+    try {
+      const response = await axios.delete(
+        `https://639a3ee6e916a46ec0ad76f2.mockapi.io/contacts/${id}`
+      );
+      dispatch(deleteContacts({ id }));
+      console.log(response);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue('Can`t delete contact. Server error');
+    }
+  }
+);
+
+export const addContact = createAsyncThunk(
+  'contacts/addContact',
+  async function (contact, { rejectWithValue, dispatch }) {
+    try {
+      const response = await axios.post(
+        'https://639a3ee6e916a46ec0ad76f2.mockapi.io/contacts',
+        {
+          name: contact.name,
+          number: contact.number,
+        }
+      );
+      dispatch(addContacts(response.data));
+      return response.data;
+    } catch (error) {
+      return rejectWithValue('Can`t add contact. Server error');
+    }
+  }
+);
+
+const contacts = createSlice({
+  name: 'contacts',
+  initialState: {
+    items: [],
+    isLoading: false,
+    error: null,
+    filter: '',
+  },
+  reducers: {
+    addContacts(state, action) {
+      state.items.push(action.payload);
+    },
+    deleteContacts(state, action) {
+      state.items = state.items.filter(
+        contact => contact.id !== action.payload.id
+      );
+    },
+    filterContacts(state, action) {
+      state.filter = action.payload;
+    },
+  },
+  extraReducers: {
+    [fetchContacts.pending]: state => {
+      state.isLoading = true;
+      state.error = null;
+    },
+    [fetchContacts.fulfilled]: (state, action) => {
+      state.isLoading = false;
+      state.items = action.payload;
+    },
+    [fetchContacts.rejected]: (state, action) => {
+      state.isLoading = false;
+      state.error = action.payload;
+    },
+    [deleteContact.rejected]: (state, action) => {
+      state.error = action.payload;
+    },
+    [addContact.rejected]: (state, action) => {
+      state.error = action.payload;
+    },
+  },
+});
+
+export const { addContacts, deleteContacts, filterContacts } = contacts.actions;
+
+// const contacts = createSlice({
+//   name: 'contacts',
+//   initialState: {
+//     item: contactsList,
+//     filter: '',
+//   },
+//   reducers: {
+//     newContacts(state, action) {
+//       state.item = [...state.item, action.payload];
+//     },
+//     deleteContacts(state, action) {
+//       state.item = state.item.filter(contact => contact.id !== action.payload);
+//     },
+//     filterValue(state, action) {
+//       state.filter = action.payload;
+//     },
+//   },
+// });
+
+// const persistConfig = {
+//   key: 'contact-list',
+//   storage,
+//   whitelist: ['item'],
+// };
+
+// export const contactsReducer = persistReducer(persistConfig, contacts.reducer);
+// export const { newContacts, deleteContacts, filterValue } = contacts.actions;
+
+export const getItem = state => state.contacts.item;
+export const getFilter = state => state.contacts.filter;
+
+console.log(getItem());
+
+export default contacts;
+
+// CntactsForm=============================
+import { useState } from 'react';
+import PropTypes from 'prop-types';
+import { nanoid } from 'nanoid';
+import { useSelector, useDispatch } from 'react-redux';
+import { filterContacts, getItem } from '../../redux/contactSlice';
+import { addContacts } from '../../redux/contactSlice';
+import css from '../ContactForm/ContactForm.module.css';
+
+const INITIAL_STATE = {
+  name: '',
+  number: '',
+};
+
+export const ContactForm = () => {
+  const [{ name, number }, setState] = useState(INITIAL_STATE);
+  const dispatch = useDispatch();
+  const contacts = useSelector(getItem);
+
+  // console.log(dispatch);
+  // console.log(contacts);
+
+  const handleChange = event => {
+    const { name, value } = event.target;
+    setState(prevState => ({ ...prevState, [name]: value }));
+  };
+
+  const handleSubmit = event => {
+    event.preventDefault();
+    const newContact = {
+      id: nanoid(),
+      name,
+      number,
+    };
+
+    reset();
+    if (contacts.some(contact => contact.name === newContact.name)) {
+      alert(`${newContact.name} is already is contacts`);
+      return;
+    }
+
+    dispatch(addContacts(newContact));
+    dispatch(filterContacts(''));
+
+    setState({ ...INITIAL_STATE });
+  };
+
+  const reset = () => {
+    setState('');
+  };
+  return (
+    <form onSubmit={handleSubmit} className={css.form}>
+      <label>
+        <h2 className={css.name}>Name</h2>
+        <input
+          className={css.inputName}
+          type="text"
+          name="name"
+          pattern="^[a-zA-Zа-яА-Я]+(([' -][a-zA-Zа-яА-Я ])?[a-zA-Zа-яА-Я]*)*$"
+          title="Name may contain only letters, apostrophe, dash and spaces. For example Adrian, Jacob Mercer, Charles de Batz de Castelmore d'Artagnan"
+          required
+          value={name}
+          onChange={handleChange}
+        />
+        <input
+          className={css.inputPhone}
+          type="tel"
+          name="number"
+          pattern="\+?\d{1,4}?[-.\s]?\(?\d{1,3}?\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}"
+          title="Phone number must be digits and can contain spaces, dashes, parentheses and can start with +"
+          required
+          value={number}
+          onChange={handleChange}
+        />
+      </label>
+      <button type="submit" className={css.submitName}>
+        Add contact
+      </button>
+    </form>
+  );
+};
+ContactForm.propTypes = {
+  onSubmit: PropTypes.func.isRequired,
+};
+
+
+//=====ContactList==============
+const dispatch = useDispatch();
+  const contacts = useSelector(getItem);
+  const filter = useSelector(getFilter);
+
+  console.log(getItem);
+
+  const contactFilter = () => {
+    if (filter === '') {
+      return false;
+    }
+    return contacts.filter(contact =>
+      contact.name.toLowerCase().includes(filter)
+    );
+  };
+
+  const phoneList = contactFilter() ? contactFilter() : contacts;
+
+  // console.log(phoneList);
+
+  return (
+    <ul className={css.contactList}>
+      {phoneList.map(contact => (
+        <li key={contact.id}>
+          {contact.name}: {contact.number}
+          <button
+            type="button"
+            name={contact.id}
+            onClick={event => dispatch(deleteContacts(event.target.name))}
+            className={css.btn}
+          >
+            Delete
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+ContactList.propTypes = {
+  phoneList: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      name: PropTypes.string.isRequired,
+      number: PropTypes.string.isRequired,
+    })
+  ),
+  deleteContact: PropTypes.func.isRequired,
+
+  //=======Filter========
+    const dispatch = useDispatch();
+  const filter = useSelector(getFilter);
+  return (
+    <>
+      <h2 className={css.titleFilter}>Find contacts by name</h2>
+      <input
+        className={css.inputFilter}
+        type="text"
+        name="name"
+        pattern="^[a-zA-Zа-яА-Я]+(([' -][a-zA-Zа-яА-Я ])?[a-zA-Zа-яА-Я]*)*$"
+        title="Name may contain only letters, apostrophe, dash and spaces. For example Adrian, Jacob Mercer, Charles de Batz de Castelmore d'Artagnan"
+        required
+        value={filter}
+        onChange={event =>
+          dispatch(filterContacts(event.target.value.toLowerCase()))
+        }
+      />
+    </>
+  );
+};
+
+Filter.propTypes = {
+  filter: PropTypes.string.isRequired,
+  filterList: PropTypes.func.isRequired,
+};
